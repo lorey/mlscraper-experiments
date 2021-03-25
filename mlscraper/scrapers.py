@@ -30,6 +30,8 @@ class Scraper:
     def add_sample(self, page, item):
         self.samples.append((page, item))
 
+    def to_dict(self) -> dict:
+        raise NotImplementedError()
 
 class DictScraper(Scraper):
     scraper_per_key = None
@@ -50,6 +52,8 @@ class DictScraper(Scraper):
     def __repr__(self):
         return f"<DictScraper {self.scraper_per_key=}, {self.samples=}>"
 
+    def to_dict(self) -> dict:
+        return {'DictScraper': {k: s.to_dict() for k, s in self.scraper_per_key.items()}}
 
 class ListScraper(Scraper):
     scraper = None
@@ -76,6 +80,8 @@ class ListScraper(Scraper):
     def __repr__(self):
         return f"<ListScraper {self.scraper=}, {self.samples=}>"
 
+    def to_dict(self) -> dict:
+        return {'ListScraper': self.scraper.to_dict()}
 
 class ValueScraper(Scraper):
     extractor = None
@@ -103,3 +109,6 @@ class ValueScraper(Scraper):
 
     def __repr__(self):
         return f"<ValueScraper {self.samples=}>"
+
+    def to_dict(self) -> dict:
+        return {'ValueScraper': {'selector': None, 'extractor': None}}

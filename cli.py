@@ -1,3 +1,5 @@
+import json
+
 from mlscraper.scrapers import Scraper
 
 
@@ -16,13 +18,13 @@ def main():
             },
             {
                 "user": "https://stackoverflow.com/users/1275778/lorey",
-                "upvotes": "0",
                 "when": "2021-01-06 10:50:04Z",
             },
         ]
     }
     scraper = Scraper.build(pages_dict)
     print(scraper)
+    print(json.dumps(scraper.to_dict(), indent=2))
 
 
 if __name__ == "__main__":
