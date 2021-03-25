@@ -18,6 +18,7 @@ def main():
             },
             {
                 "user": "https://stackoverflow.com/users/1275778/lorey",
+                "upvotes": "0",
                 "when": "2021-01-06 10:50:04Z",
             },
         ]

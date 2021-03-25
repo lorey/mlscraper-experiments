@@ -53,7 +53,15 @@ class DictScraper(Scraper):
         return f"<DictScraper {self.scraper_per_key=}, {self.samples=}>"
 
     def to_dict(self) -> dict:
-        return {'DictScraper': {k: s.to_dict() for k, s in self.scraper_per_key.items()}}
+        return {
+            "DictScraper": {
+                "scraper_per_key": {
+                    k: s.to_dict() for k, s in self.scraper_per_key.items()
+                },
+                "samples": self.samples,
+            }
+        }
+
 
 class ListScraper(Scraper):
     scraper = None
@@ -81,7 +89,10 @@ class ListScraper(Scraper):
         return f"<ListScraper {self.scraper=}, {self.samples=}>"
 
     def to_dict(self) -> dict:
-        return {'ListScraper': self.scraper.to_dict()}
+        return {
+            "ListScraper": {"scraper": self.scraper.to_dict(), "samples": self.samples}
+        }
+
 
 class ValueScraper(Scraper):
     extractor = None
@@ -111,4 +122,10 @@ class ValueScraper(Scraper):
         return f"<ValueScraper {self.samples=}>"
 
     def to_dict(self) -> dict:
-        return {'ValueScraper': {'selector': None, 'extractor': None}}
+        return {
+            "ValueScraper": {
+                "selector": None,
+                "extractor": None,
+                "samples": self.samples,
+            }
+        }
