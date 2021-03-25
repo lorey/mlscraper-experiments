@@ -21,7 +21,7 @@ def main():
             },
         ]
     }
-    scraper = Scraper.build_from_pages_dict(pages_dict)
+    scraper = Scraper.build(pages_dict)
     print(scraper)
 
 
