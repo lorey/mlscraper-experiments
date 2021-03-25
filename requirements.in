@@ -1,0 +1,15 @@
+# toolchain
+black
+isort
+flake8
+pip-tools
+pylint
+pytest
+pytest-cov
+
+# app
+requests
+BeautifulSoup4
+lxml
+scikit-learn
+pandas
