@@ -1,3 +1,8 @@
+import typing
+
+from mlscraper.util import Sample
+
+
 class Scraper:
     samples = None
 
@@ -5,15 +10,15 @@ class Scraper:
         self.samples = []
 
     @staticmethod
-    def build(page_to_item: dict):
-        first_item = list(page_to_item.values())[0]
+    def build(samples: typing.List[Sample]):
+        first_item = samples[0].item
         scraper = Scraper.for_item(first_item)
 
         # go through samples one by one
-        for page, item in page_to_item.items():
+        for sample in samples:
             # - sample exists: extend
             # - sample unknown: create (and set optional)
-            scraper.add_sample(page, item)
+            scraper.add_sample(sample)
         return scraper
 
     @staticmethod
@@ -27,11 +32,12 @@ class Scraper:
         else:
             raise RuntimeError(f"unsupported type: {type(item)}")
 
-    def add_sample(self, page, item):
-        self.samples.append((page, item))
+    def add_sample(self, sample):
+        self.samples.append(sample)
 
     def to_dict(self) -> dict:
         raise NotImplementedError()
+
 
 class DictScraper(Scraper):
     scraper_per_key = None
@@ -40,14 +46,14 @@ class DictScraper(Scraper):
         super().__init__()
         self.scraper_per_key = {}
 
-    def add_sample(self, page, item):
-        assert isinstance(item, dict)
-        super().add_sample(page, item)
+    def add_sample(self, sample):
+        assert isinstance(sample.item, dict)
+        super().add_sample(sample)
 
-        for key in item.keys():
+        for key in sample.item.keys():
             if key not in self.scraper_per_key:
-                self.scraper_per_key[key] = Scraper.for_item(item[key])
-            self.scraper_per_key[key].add_sample(page, item[key])
+                self.scraper_per_key[key] = Scraper.for_item(sample.item[key])
+            self.scraper_per_key[key].add_sample(Sample(sample.page, sample.item[key]))
 
     def __repr__(self):
         return f"<DictScraper {self.scraper_per_key=}, {self.samples=}>"
@@ -71,19 +77,18 @@ class ListScraper(Scraper):
         self.scraper = None
         self.samples = []
 
-    def add_sample(self, page, item):
-        assert isinstance(item, list)
-        assert len(item) > 0, "empty list unsupported"
-        super().add_sample(page, item)
-        self.samples.append(item)
+    def add_sample(self, sample: Sample):
+        assert isinstance(sample.item, list)
+        assert len(sample.item) > 0, "empty list unsupported"
+        super().add_sample(sample)
 
         if not self.scraper:
-            self.scraper = Scraper.for_item(item[0])
+            self.scraper = Scraper.for_item(sample.item[0])
             if isinstance(self.scraper, ListScraper):
                 raise RuntimeError("list in list not allowed")
 
-        for item_inside in item:
-            self.scraper.add_sample(page, item_inside)
+        for item_inside in sample.item:
+            self.scraper.add_sample(Sample(sample.page, item_inside))
 
     def __repr__(self):
         return f"<ListScraper {self.scraper=}, {self.samples=}>"
@@ -102,9 +107,11 @@ class ValueScraper(Scraper):
         super().__init__()
         self.samples = []
 
-    def add_sample(self, page, item):
-        assert isinstance(item, str), f"str expected, {type(item)} provided: {item}"
-        super().add_sample(page, item)
+    def add_sample(self, sample: Sample):
+        assert isinstance(
+            sample.item, str
+        ), f"str expected, {type(sample.item)} provided: {sample.item}"
+        super().add_sample(sample)
 
     def train(self):
         # find items on each page

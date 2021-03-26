@@ -1,6 +1,7 @@
 import json
 
 from mlscraper.scrapers import Scraper
+from mlscraper.util import samples_from_url_dict
 
 
 def main():
@@ -23,9 +24,10 @@ def main():
             },
         ]
     }
-    scraper = Scraper.build(pages_dict)
+    samples = samples_from_url_dict(pages_dict)
+    scraper = Scraper.build(samples)
     print(scraper)
-    print(json.dumps(scraper.to_dict(), indent=2))
+    print(json.dumps(scraper.to_dict(), indent=2, default=str))
 
 
 if __name__ == "__main__":

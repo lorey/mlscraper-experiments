@@ -1,6 +1,7 @@
 from bs4 import BeautifulSoup
 
-from mlscraper.scrapers import ValueScraper, Scraper, ListScraper, DictScraper
+from mlscraper.scrapers import DictScraper, ListScraper, Scraper, ValueScraper
+from mlscraper.util import samples_from_url_dict
 
 
 def test_value_scraper():
@@ -35,11 +36,12 @@ def test_scraper_build():
         ]
     }
 
-    scraper = Scraper.build(pages_dict)
+    samples = samples_from_url_dict(pages_dict)
+    scraper = Scraper.build(samples)
     assert isinstance(scraper, ListScraper)
     print(scraper.samples)
     url = "https://stackoverflow.com/questions/6377231/avoid-warnings-on-404-during-django-test-runs"
-    assert scraper.samples[0] == (url, pages_dict[url])
+    assert scraper.samples[0].item == pages_dict[url]
 
     dict_scraper = scraper.scraper
     assert isinstance(dict_scraper, DictScraper)
