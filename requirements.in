@@ -8,6 +8,7 @@ pytest
 pytest-cov
 
 # app
+more-itertools
 requests
 BeautifulSoup4
 lxml

@@ -44,6 +44,8 @@ mccabe==0.6.1
     # via
     #   flake8
     #   pylint
+more-itertools==8.7.0
+    # via -r requirements.in
 mypy-extensions==0.4.3
     # via black
 numpy==1.20.1
@@ -67,7 +69,7 @@ py==1.10.0
     # via pytest
 pycodestyle==2.7.0
     # via flake8
-pyflakes==2.3.0
+pyflakes==2.3.1
     # via flake8
 pylint==2.7.2
     # via -r requirements.in
@@ -89,7 +91,7 @@ requests==2.25.1
     # via -r requirements.in
 scikit-learn==0.24.1
     # via -r requirements.in
-scipy==1.6.1
+scipy==1.6.2
     # via scikit-learn
 six==1.15.0
     # via python-dateutil
