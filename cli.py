@@ -1,4 +1,4 @@
-import json
+import logging
 
 from mlscraper.scrapers import Scraper
 from mlscraper.util import samples_from_url_dict
@@ -26,9 +26,9 @@ def main():
     }
     samples = samples_from_url_dict(pages_dict)
     scraper = Scraper.build(samples)
-    print(scraper)
-    print(json.dumps(scraper.to_dict(), indent=2, default=str))
+    scraper.train()
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()

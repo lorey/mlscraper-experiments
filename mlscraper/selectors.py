@@ -1,23 +1,36 @@
 import logging
 import typing
-from itertools import combinations, product
+from itertools import product
 
 from bs4 import Tag
 from more_itertools import flatten, powerset
 
 from mlscraper.util import Sample
 
-
-class CssBasedSelector:
-    def __init__(self, samples):
-        self.samples = samples
-
-    def train(self):
-        for css_selector in generate_css_selectors_for_samples(self.samples):
-            print(css_selector)
+PARENT_NODE_COUNT_MAX = 2
+CSS_CLASS_COMBINATIONS_MAX = 2
 
 
-def generate_css_selectors_for_samples(samples: typing.List[Sample]):
+class CssRuleSelector:
+    def __init__(self, css_rule):
+        self.css_rule = css_rule
+
+    def select(self, page):
+        return page.select(self.css_rule)[0]
+
+    def select_all(self, page):
+        return page.select(self.css_rule)
+
+
+def make_css_selector_for_samples(samples):
+    for css_selector in generate_css_selectors_for_samples(samples):
+        return CssRuleSelector(css_selector)
+    return None
+
+
+def generate_css_selectors_for_samples(
+    samples: typing.List[Sample],
+) -> typing.Generator:
     """
     Generate CSS selectors that match the given samples.
     :param samples:
@@ -32,13 +45,10 @@ def generate_css_selectors_for_samples(samples: typing.List[Sample]):
     for sample in samples:
         for match in sample.get_matches():
             for css_sel in generate_path_selector(match.node):
-                print(css_sel)
+                logging.info(css_sel)
                 matched_nodes = set(flatten(page.select(css_sel) for page in pages))
-                print(matched_nodes)
-                print(node_combinations)
                 if matched_nodes in node_combinations:
-                    return css_sel
-    return None
+                    yield css_sel
 
 
 def generate_node_selector(node):
@@ -55,7 +65,7 @@ def generate_node_selector(node):
 
     # use classes
     css_classes = node.attrs.get("class", [])
-    for css_class_combo in powerset(css_classes):
+    for css_class_combo in powerset_max_length(css_classes, CSS_CLASS_COMBINATIONS_MAX):
         css_clases_str = "".join(
             [".{}".format(css_class) for css_class in css_class_combo]
         )
@@ -70,6 +80,10 @@ def generate_node_selector(node):
         children_of_same_type = [c for c in children_tags if c.name == node.name]
         child_index = children_of_same_type.index(node) + 1
         yield ":nth-of-type(%d)" % child_index
+
+
+def powerset_max_length(candidates, length):
+    return filter(lambda s: len(s) <= length, powerset(candidates))
 
 
 def generate_path_selector(node):
@@ -96,10 +110,10 @@ def generate_path_selector(node):
     # print(parents)
 
     # loop from i=0 to i=len(parents) as we consider all parents
-    parent_node_count_max = min(len(parents) + 1, 2)
-    for parent_node_count in range(parent_node_count_max):
+    parent_node_count_max = min(len(parents), PARENT_NODE_COUNT_MAX)
+    for parent_node_count in range(parent_node_count_max + 1):
         logging.info("path of length %d" % parent_node_count)
-        for parent_nodes_sampled in combinations(parents, parent_node_count):
+        for parent_nodes_sampled in powerset_max_length(parents, parent_node_count):
             path_sampled = (node,) + parent_nodes_sampled
             # logging.info(path_sampled)
 
@@ -116,5 +130,7 @@ def generate_path_selector(node):
             # create an actual css selector for each selector path
             # e.g. .main > .wrapper > .div
             for path_sampled_selector in path_sampled_selectors:
-                css_selector = " > ".join(reversed(path_sampled_selector))
+                # if paths are not directly connected, i.e. (1)-(2)-3-(4)
+                #  join must be " " and not " > "
+                css_selector = " ".join(reversed(path_sampled_selector))
                 yield css_selector

@@ -1,6 +1,7 @@
 import typing
 
-from mlscraper.util import Sample
+from mlscraper.selectors import make_css_selector_for_samples
+from mlscraper.util import Extractor, Page, Sample
 
 
 class Scraper:
@@ -38,6 +39,15 @@ class Scraper:
     def to_dict(self) -> dict:
         raise NotImplementedError()
 
+    def train(self) -> None:
+        raise NotImplementedError()
+
+    def scrape(self, page: Page):
+        raise NotImplementedError()
+
+    def scrape_many(self, page: Page):
+        raise NotImplementedError()
+
 
 class DictScraper(Scraper):
     scraper_per_key = None
@@ -54,6 +64,13 @@ class DictScraper(Scraper):
             if key not in self.scraper_per_key:
                 self.scraper_per_key[key] = Scraper.for_item(sample.item[key])
             self.scraper_per_key[key].add_sample(Sample(sample.page, sample.item[key]))
+
+    def train(self) -> None:
+        for scraper in self.scraper_per_key.values():
+            scraper.train()
+
+    def scrape(self, page: Page):
+        return {k: self.scraper_per_key[k].scrape(page) for k in self.scraper_per_key}
 
     def __repr__(self):
         return f"<DictScraper {self.scraper_per_key=}, {self.samples=}>"
@@ -90,6 +107,12 @@ class ListScraper(Scraper):
         for item_inside in sample.item:
             self.scraper.add_sample(Sample(sample.page, item_inside))
 
+    def train(self) -> None:
+        self.scraper.train()
+
+    def scrape(self, page: Page):
+        return self.scraper.scrape_many(page)
+
     def __repr__(self):
         return f"<ListScraper {self.scraper=}, {self.samples=}>"
 
@@ -114,16 +137,16 @@ class ValueScraper(Scraper):
         super().add_sample(sample)
 
     def train(self):
-        # find items on each page
-        # -> return tuple of item and extractor
-        # -> choose best extractor
+        self.selector = make_css_selector_for_samples(self.samples)
+        self.extractor = Extractor()
 
-        # train classifier that finds items
-        # -> select (subset) items from DOM as False, and found items as True
-        # -> generate properties of nodes
+    def scrape(self, page: Page):
+        node = self.selector.select(page)
+        return self.extractor.extract(node)
 
-        # store found classifier as selector
-        pass
+    def scrape_many(self, page: Page):
+        nodes = self.selector.select_all(page)
+        return [self.extractor.extract(n) for n in nodes]
 
     def __repr__(self):
         return f"<ValueScraper {self.samples=}>"
