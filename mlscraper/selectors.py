@@ -58,15 +58,15 @@ def generate_matchers_for_samples(
                     logging.info(f"{css_sel} matches one of the possible combinations")
                     i = node_combinations.index(matched_nodes)
                     matches = match_combinations[i]
-                    match_extractors = {type(m.extractor) for m in matches}
+                    match_extractors = {m.extractor for m in matches}
                     if len(match_extractors) == 1:
                         logging.info(f"{css_sel} matches same extractors")
                         selector = CssRuleSelector(css_sel)
-                        extractor = next(iter(matches)).extractor
+                        extractor = next(iter(match_extractors))
                         yield Matcher(selector, extractor)
                     else:
                         logging.info(
-                            f"{css_sel} would need different selectors: {match_extractors}"
+                            f"{css_sel} would need different extractors: {match_extractors}"
                         )
 
 

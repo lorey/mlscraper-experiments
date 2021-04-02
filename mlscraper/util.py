@@ -1,6 +1,22 @@
 import requests
 from bs4 import BeautifulSoup
 
+extractor_instance_map = {}
+
+
+def get_text_extractor():
+    map_key = ("text",)
+    if map_key not in extractor_instance_map:
+        extractor_instance_map[map_key] = TextExtractor()
+    return extractor_instance_map[map_key]
+
+
+def get_attribute_extractor(attr):
+    map_key = ("attr", attr)
+    if map_key not in extractor_instance_map:
+        extractor_instance_map[map_key] = AttributeExtractor(attr)
+    return extractor_instance_map[map_key]
+
 
 class Page:
     """
@@ -17,11 +33,13 @@ class Page:
     def _generate_find_all(self, item):
         # text
         for node in self.soup.find_all(text=item):
-            yield Match(node.parent, TextExtractor())
+            yield Match(node.parent, get_text_extractor())
 
-        # url
-        for node in self.soup.find_all("a", {"href": item}):
-            yield Match(node, HrefExtractor())
+        # attributes
+        for node in self.soup.find_all():
+            for attr in node.attrs:
+                if node[attr] == item:
+                    yield Match(node, get_attribute_extractor(attr))
 
         # todo implement other find methods
 
@@ -47,15 +65,18 @@ class TextExtractor(Extractor):
         return node.text
 
 
-class HrefExtractor(Extractor):
-    """
-    Class to extract href attributes.
-    """
+class AttributeExtractor(Extractor):
+    attr = None
+
+    def __init__(self, attr):
+        self.attr = attr
 
     def extract(self, node):
-        if "href" in node.attrs:
-            return node["href"]
-        return None
+        if self.attr in node.attrs:
+            return node[self.attr]
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} {self.attr=}>"
 
 
 class Match:
@@ -72,6 +93,9 @@ class Match:
 
     def get_value(self):
         return self.extractor.extract(self.node)
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} {self.extractor=} {self.node=}>"
 
 
 class Selector:
@@ -105,6 +129,9 @@ class Matcher:
     def match_all(self, page: Page):
         node = self.selector.select_all(page)
         return self.extractor.extract(node)
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} {self.selector=} {self.extractor=}>"
 
 
 class Sample:
