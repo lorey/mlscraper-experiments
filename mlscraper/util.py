@@ -1,3 +1,5 @@
+import typing
+
 import requests
 from bs4 import BeautifulSoup
 
@@ -124,11 +126,11 @@ class Matcher:
 
     def match_one(self, page: Page):
         node = self.selector.select_one(page)
-        return self.extractor.extract(node)
+        return Match(node, self.extractor)
 
-    def match_all(self, page: Page):
-        node = self.selector.select_all(page)
-        return self.extractor.extract(node)
+    def match_all(self, page: Page) -> typing.List[Match]:
+        nodes = self.selector.select_all(page)
+        return [Match(node, self.extractor) for node in nodes]
 
     def __repr__(self):
         return f"<{self.__class__.__name__} {self.selector=} {self.extractor=}>"

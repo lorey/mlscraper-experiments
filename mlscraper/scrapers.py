@@ -2,7 +2,7 @@ import logging
 import typing
 
 from mlscraper.selectors import make_matcher_for_samples
-from mlscraper.util import Page, Sample
+from mlscraper.util import Match, Page, Sample
 
 
 class Scraper:
@@ -46,11 +46,15 @@ class Scraper:
     def scrape(self, page: Page):
         raise NotImplementedError()
 
-    def scrape_many(self, page: Page):
+    def scrape_match(self, page: Page):
+        raise NotImplementedError()
+
+    def scrape_matches(self, page: Page) -> typing.List[Match]:
         raise NotImplementedError()
 
 
 class DictScraper(Scraper):
+
     scraper_per_key = None
 
     def __init__(self):
@@ -71,8 +75,18 @@ class DictScraper(Scraper):
             scraper.train()
         logging.info(f"trained {self} successfully")
 
+        # todo train parent element
+
     def scrape(self, page: Page):
         return {k: self.scraper_per_key[k].scrape(page) for k in self.scraper_per_key}
+
+    def scrape_match(self, page: Page):
+        return {
+            k: self.scraper_per_key[k].scrape_match(page) for k in self.scraper_per_key
+        }
+
+    def scrape_matches(self, page: Page) -> typing.List[Match]:
+        raise NotImplementedError("This is difficult")
 
     def __repr__(self):
         return f"<DictScraper {self.scraper_per_key=}, {self.samples=}>"
@@ -89,6 +103,7 @@ class DictScraper(Scraper):
 
 
 class ListScraper(Scraper):
+
     scraper = None
 
     def __init__(self):
@@ -116,6 +131,12 @@ class ListScraper(Scraper):
     def scrape(self, page: Page):
         return self.scraper.scrape_many(page)
 
+    def scrape_match(self, page: Page):
+        return self.scraper.scrape_matches(page)
+
+    def scrape_matches(self, page: Page) -> typing.List[Match]:
+        raise NotImplementedError("scraping lists of lists is not supported")
+
     def __repr__(self):
         return f"<ListScraper {self.scraper=}, {self.samples=}>"
 
@@ -126,6 +147,7 @@ class ListScraper(Scraper):
 
 
 class ValueScraper(Scraper):
+
     matcher = None
 
     def __init__(self):
@@ -142,11 +164,17 @@ class ValueScraper(Scraper):
         self.matcher = make_matcher_for_samples(self.samples)
         logging.info(f"trained {self} sucessfully: {self.matcher=}")
 
-    def scrape(self, page: Page):
+    def scrape_match(self, page: Page):
         return self.matcher.match_one(page)
 
-    def scrape_many(self, page: Page):
+    def scrape_matches(self, page: Page) -> typing.List[Match]:
         return self.matcher.match_all(page)
+
+    def scrape(self, page: Page):
+        return self.scrape_match(page).get_value()
+
+    def scrape_many(self, page: Page):
+        return [m.get_value() for m in self.scrape_matches(page)]
 
     def __repr__(self):
         return f"<ValueScraper {self.samples=}>"
