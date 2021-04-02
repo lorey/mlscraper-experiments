@@ -1,34 +1,40 @@
 import logging
 import typing
-from itertools import product
+from itertools import combinations, product
 
 from bs4 import Tag
 from more_itertools import flatten, powerset
 
-from mlscraper.util import Sample
+from mlscraper.util import Matcher, Page, Sample, Selector
 
 PARENT_NODE_COUNT_MAX = 2
 CSS_CLASS_COMBINATIONS_MAX = 2
 
 
-class CssRuleSelector:
+class CssRuleSelector(Selector):
     def __init__(self, css_rule):
         self.css_rule = css_rule
 
-    def select(self, page):
+    def select_one(self, page: Page):
         return page.select(self.css_rule)[0]
 
     def select_all(self, page):
         return page.select(self.css_rule)
 
+    def __repr__(self):
+        return f"<{self.__class__.__name__} {self.css_rule=}>"
 
-def make_css_selector_for_samples(samples):
-    for css_selector in generate_css_selectors_for_samples(samples):
-        return CssRuleSelector(css_selector)
+
+def make_matcher_for_samples(samples):
+    for sample in samples:
+        assert sample.get_matches(), f"no matches found for {sample}"
+
+    for matcher in generate_matchers_for_samples(samples):
+        return matcher
     return None
 
 
-def generate_css_selectors_for_samples(
+def generate_matchers_for_samples(
     samples: typing.List[Sample],
 ) -> typing.Generator:
     """
@@ -39,16 +45,29 @@ def generate_css_selectors_for_samples(
     pages = {s.page for s in samples}
     # make a list containing sets of nodes for each possible combination of matches
     # -> enables fast searching and set ensures order
-    nodes_per_sample = [map(lambda m: m.node, s.get_matches()) for s in samples]
-    node_combinations = list(map(set, product(*nodes_per_sample)))
+    matches_per_sample = [s.get_matches() for s in samples]
+    match_combinations = list(map(set, product(*matches_per_sample)))
+    node_combinations = [{m.node for m in matches} for matches in match_combinations]
 
     for sample in samples:
         for match in sample.get_matches():
             for css_sel in generate_path_selector(match.node):
-                logging.info(css_sel)
+                logging.debug(f"testing selector: {css_sel}")
                 matched_nodes = set(flatten(page.select(css_sel) for page in pages))
                 if matched_nodes in node_combinations:
-                    yield css_sel
+                    logging.info(f"{css_sel} matches one of the possible combinations")
+                    i = node_combinations.index(matched_nodes)
+                    matches = match_combinations[i]
+                    match_extractors = {type(m.extractor) for m in matches}
+                    if len(match_extractors) == 1:
+                        logging.info(f"{css_sel} matches same extractors")
+                        selector = CssRuleSelector(css_sel)
+                        extractor = next(iter(matches)).extractor
+                        yield Matcher(selector, extractor)
+                    else:
+                        logging.info(
+                            f"{css_sel} would need different selectors: {match_extractors}"
+                        )
 
 
 def generate_node_selector(node):
@@ -72,6 +91,8 @@ def generate_node_selector(node):
         css_selector = node.name + css_clases_str
         yield css_selector
 
+    # todo: nth applies to whole selectors
+    #  -> should thus be a step after actual selector generation
     if isinstance(node.parent, Tag) and hasattr(node, "name"):
         children_tags = [c for c in node.parent.children if isinstance(c, Tag)]
         child_index = list(children_tags).index(node) + 1
@@ -112,8 +133,9 @@ def generate_path_selector(node):
     # loop from i=0 to i=len(parents) as we consider all parents
     parent_node_count_max = min(len(parents), PARENT_NODE_COUNT_MAX)
     for parent_node_count in range(parent_node_count_max + 1):
-        logging.info("path of length %d" % parent_node_count)
-        for parent_nodes_sampled in powerset_max_length(parents, parent_node_count):
+        logging.info("generating path selectors with %d parents" % parent_node_count)
+        # generate paths with exactly parent_node_count nodes
+        for parent_nodes_sampled in combinations(parents, parent_node_count):
             path_sampled = (node,) + parent_nodes_sampled
             # logging.info(path_sampled)
 

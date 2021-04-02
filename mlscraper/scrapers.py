@@ -1,7 +1,8 @@
+import logging
 import typing
 
-from mlscraper.selectors import make_css_selector_for_samples
-from mlscraper.util import Extractor, Page, Sample
+from mlscraper.selectors import make_matcher_for_samples
+from mlscraper.util import Page, Sample
 
 
 class Scraper:
@@ -68,6 +69,7 @@ class DictScraper(Scraper):
     def train(self) -> None:
         for scraper in self.scraper_per_key.values():
             scraper.train()
+        logging.info(f"trained {self} successfully")
 
     def scrape(self, page: Page):
         return {k: self.scraper_per_key[k].scrape(page) for k in self.scraper_per_key}
@@ -108,6 +110,7 @@ class ListScraper(Scraper):
             self.scraper.add_sample(Sample(sample.page, item_inside))
 
     def train(self) -> None:
+        # train the scraper that selects this list's items
         self.scraper.train()
 
     def scrape(self, page: Page):
@@ -123,8 +126,7 @@ class ListScraper(Scraper):
 
 
 class ValueScraper(Scraper):
-    extractor = None
-    selector = None
+    matcher = None
 
     def __init__(self):
         super().__init__()
@@ -137,16 +139,14 @@ class ValueScraper(Scraper):
         super().add_sample(sample)
 
     def train(self):
-        self.selector = make_css_selector_for_samples(self.samples)
-        self.extractor = Extractor()
+        self.matcher = make_matcher_for_samples(self.samples)
+        logging.info(f"trained {self} sucessfully: {self.matcher=}")
 
     def scrape(self, page: Page):
-        node = self.selector.select(page)
-        return self.extractor.extract(node)
+        return self.matcher.match_one(page)
 
     def scrape_many(self, page: Page):
-        nodes = self.selector.select_all(page)
-        return [self.extractor.extract(n) for n in nodes]
+        return self.matcher.match_all(page)
 
     def __repr__(self):
         return f"<ValueScraper {self.samples=}>"
