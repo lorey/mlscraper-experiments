@@ -1,7 +1,8 @@
 import logging
 import typing
+from itertools import product
 
-from mlscraper.selectors import make_matcher_for_samples
+from mlscraper.selectors import get_common_ancestor_for_nodes, make_matcher_for_samples
 from mlscraper.util import Match, Page, Sample
 
 
@@ -49,7 +50,7 @@ class Scraper:
     def scrape_match(self, page: Page):
         raise NotImplementedError()
 
-    def scrape_matches(self, page: Page) -> typing.List[Match]:
+    def scrape_matches(self, page: Page):
         raise NotImplementedError()
 
 
@@ -85,8 +86,41 @@ class DictScraper(Scraper):
             k: self.scraper_per_key[k].scrape_match(page) for k in self.scraper_per_key
         }
 
-    def scrape_matches(self, page: Page) -> typing.List[Match]:
-        raise NotImplementedError("This is difficult")
+    def scrape_matches(self, page: Page):
+        # to infer which samples belong together,
+        # we compute the common ancestor for each combination
+        # and see which combination has the deepest ancestors
+        # and thus the highest cohesion
+        matches_per_key = {
+            k: scraper.scrape_matches(page)
+            for k, scraper in self.scraper_per_key.items()
+        }
+        matches_per_key_len = {k: len(matches_per_key[k]) for k in matches_per_key}
+        assert (
+            len(set(matches_per_key_len.values())) == 1
+        ), f"Unequal match count: {matches_per_key}"
+
+        depth_by_combi = []
+        for match_combination in product(*matches_per_key.values()):
+            match_combination_nodes = list(map(lambda m: m.node, match_combination))
+            common_ancestor_node = get_common_ancestor_for_nodes(
+                match_combination_nodes
+            )
+            combi_depth = len(list(common_ancestor_node.parents))
+
+            # todo: this assumes all keys all the time
+            match_combination_by_key = dict(
+                zip(matches_per_key.keys(), match_combination)
+            )
+            depth_by_combi.append((match_combination_by_key, combi_depth))
+
+        # now we go deepest first until there are no more matches
+        matches_seen = set()
+        for match_by_key, _ in sorted(depth_by_combi, key=lambda dbc: -dbc[1]):
+            print(match_by_key)
+            if all(match not in matches_seen for match in match_by_key.values()):
+                yield match_by_key
+                matches_seen |= set(match_by_key.values())
 
     def __repr__(self):
         return f"<DictScraper {self.scraper_per_key=}, {self.samples=}>"

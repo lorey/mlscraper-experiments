@@ -52,6 +52,27 @@ class TestScraper:
             print(key, scraper.scrape(so_page))
 
 
+class TestDictScraper:
+    def test_scrape_matches(self):
+        item_1 = {"h": "no 1", "t": "the first one"}
+        item_2 = {"h": "no 2", "t": "the second one"}
+
+        elem_temp = "<div><h1>%(h)s</h1><p>%(t)s</p></div>"
+        elem_1 = elem_temp % item_1
+        elem_2 = elem_temp % item_2
+        html = f"<html><body>{elem_1}{elem_2}</body></html>"
+        page = Page(html)
+        ds = DictScraper()
+        ds.add_sample(Sample(page, item_1))
+        ds.add_sample(Sample(page, item_2))
+        ds.train()
+        match_dicts = list(ds.scrape_matches(page))
+        matches_items = [
+            {k: m.get_value() for k, m in md.items()} for md in match_dicts
+        ]
+        assert [item_1, item_2] == matches_items
+
+
 def test_value_scraper():
     page1_html = '<html><body><p class="test">test</p><p>bla</p></body></html>'
     page1 = Page(page1_html)

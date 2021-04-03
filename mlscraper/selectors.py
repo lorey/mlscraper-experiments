@@ -156,3 +156,38 @@ def generate_path_selector(node):
                 #  join must be " " and not " > "
                 css_selector = " ".join(reversed(path_sampled_selector))
                 yield css_selector
+
+
+def get_common_ancestor_for_nodes(nodes):
+    # todo might require adding node here!
+    paths_of_nodes = [list(reversed(list(node.parents))) for node in nodes]
+    ancestor = _get_common_ancestor_for_paths(paths_of_nodes)
+    return ancestor
+
+
+def _get_common_ancestor_for_paths(paths):
+    """
+    Computes the first common ancestor for list of paths.
+    :param paths: list of list of nodes from top to bottom
+    :return: first common index or RuntimeError
+    """
+    # go through path one by one
+    # while len(set([paths[n][i] for n in range(len(paths))])) == 1:
+    ind = None
+    for i, nodes in enumerate(zip(*paths)):
+        # as long as all nodes are the same
+        # -> go deeper
+        # else break
+        if len(set(nodes)) != 1:
+            # return parent of mismatch
+            break
+
+        # set after as this remembers the last common index
+        ind = i
+
+    # if index is unset, even the first nodes didn't match
+    if ind is None:
+        raise RuntimeError("No common ancestor")
+
+    # as all nodes are the same, we can just use the first path
+    return paths[0][ind]
