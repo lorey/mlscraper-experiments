@@ -2,8 +2,8 @@ import logging
 import typing
 from itertools import product
 
-from mlscraper.selectors import get_common_ancestor_for_nodes, make_matcher_for_samples
-from mlscraper.util import Match, Page, Sample
+from mlscraper.selectors import make_matcher_for_samples
+from mlscraper.util import Match, Page, Sample, get_common_ancestor_for_nodes
 
 
 class Scraper:
@@ -72,11 +72,24 @@ class DictScraper(Scraper):
             self.scraper_per_key[key].add_sample(Sample(sample.page, sample.item[key]))
 
     def train(self) -> None:
-        for scraper in self.scraper_per_key.values():
-            scraper.train()
-        logging.info(f"trained {self} successfully")
+        for sample in self.samples:
+            sample_matches = sample.get_matches()
+            print(sample_matches)
 
-        # todo train parent element
+        # 1.
+        #   get all match combinations
+        #   for each combination, take the one with the smallest span
+
+        # 2.
+        #   get all parent elements that do not overlap
+
+        # 3.
+        #   for all parent element combinations,
+        #   try to infer a selector
+
+        # result:
+        # a) selector that selects root nodes of dicts
+        # b) selector that selects dict elements
 
     def scrape(self, page: Page):
         return {k: self.scraper_per_key[k].scrape(page) for k in self.scraper_per_key}

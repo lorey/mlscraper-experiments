@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup
 
-from mlscraper.util import AttributeExtractor, Page, get_attribute_extractor
+from mlscraper.util import AttributeValueExtractor, Node, Page, get_attribute_extractor
 
 
 class TestPage:
@@ -22,10 +22,10 @@ def test_attribute_extractor():
         '<html><body><a href="http://karllorey.com"></a><a>no link</a></body></html>',
         "lxml",
     )
-    ue = AttributeExtractor("href")
+    ue = AttributeValueExtractor("href")
     a_tags = soup.find_all("a")
-    assert ue.extract(a_tags[0]) == "http://karllorey.com"
-    assert ue.extract(a_tags[1]) is None
+    assert ue.extract(Node(a_tags[0])) == "http://karllorey.com"
+    assert ue.extract(Node(a_tags[1])) is None
 
 
 def test_extractor_factory():
