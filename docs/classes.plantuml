@@ -1,31 +1,55 @@
 @startuml
+package Parsers {
+    class Node
+    Node : parent: Node
+    Node : parents: Node[]
+    Node : select(css: str): Node
+    Node : get_depth(): int
+    Node : generate_selectors(): gen[str]
+    Node : generate_path_selectors(): gen[str]
+    Node : ? find_all(item): Match
+
+    class Page
+    Page : {static} from_html(html: str)
+
+    Node <|-- Page
+}
+
 class Selector
 Selector : select_one(node: Node)
 Selector : select_all(node: Node)
+Selector -> Node
 
 class CSSRuleSelector
 
 Selector <|-- CSSRuleSelector
 
 package Samples {
+    class TrainingSet
+    TrainingSet : item
+
+    class Item
+    Item : samples
+    Item : get_matches()
+
     class Sample
     Sample : page
-    Sample : item
-    Sample : get_matches()
+    Sample : value
 
-    class DictSample
-    DictSample : samples_by_key: Dict[str, Sample]
+    class DictItem
+    DictItem : item_by_key: Dict[str, Sample]
 
-    class ListSample
-    ListSample : samples: Sample[]
+    class ListItem
+    ListItem : item: Item
 
-    class ValueSample
-    ValueSample : samples: str[]
+    class ValueItem
+    ValueItem : values: str[]
 }
-
-Sample <|-- DictSample
-Sample <|-- ListSample
-Sample <|-- ValueSample
+Item --> Sample
+TrainingSet --> Item
+Item <|-- DictItem
+Item <|-- ListItem
+Item <|-- ValueItem
 
 Sample --> Page
 
@@ -76,10 +100,8 @@ package Scrapers {
     ValueScraper : extractor
 }
 
-Scraper --> Sample
-
-ValueScraper --> Selector
-ListScraper --> Selector
+ValueScraper ---> Selector
+ListScraper ---> Selector
 
 class ValueExtractor
 ValueExtractor : get(node: Node)
@@ -99,17 +121,5 @@ ValueExtractor <|--  TextExtractor
 
 ValueMatch --> ValueExtractor
 
-class Node
-Node : parent: Node
-Node : parents: Node[]
-Node : select(css: str): Node
-Node : get_depth(): int
-Node : generate_selectors(): gen[str]
-Node : generate_path_selectors(): gen[str]
-Node : ? find_all(item): Match
 
-class Page
-Page : {static} from_html(html: str)
-
-Node <|-- Page
 @enduml
