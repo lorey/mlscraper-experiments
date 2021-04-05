@@ -276,7 +276,8 @@ def samples_from_url_dict(url_to_item):
     samples = []
     for url, item in url_to_item.items():
         page_html = requests.get(url).content
-        samples.append(Sample(Page(page_html), item))
+        page = Page(page_html)
+        samples.append(Sample(page, item))
     return samples
 
 
