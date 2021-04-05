@@ -12,9 +12,15 @@ package Samples {
     Sample : page
     Sample : item
     Sample : get_matches()
+
     class DictSample
+    DictSample : samples_by_key: Dict[str, Sample]
+
     class ListSample
+    ListSample : samples: Sample[]
+
     class ValueSample
+    ValueSample : samples: str[]
 }
 
 Sample <|-- DictSample
@@ -70,6 +76,8 @@ package Scrapers {
     ValueScraper : extractor
 }
 
+Scraper --> Sample
+
 ValueScraper --> Selector
 ListScraper --> Selector
 
@@ -92,12 +100,16 @@ ValueExtractor <|--  TextExtractor
 ValueMatch --> ValueExtractor
 
 class Node
-Node : parent
-Node : parents
-Node : get_depth()
-Node : generate_selectors()
+Node : parent: Node
+Node : parents: Node[]
+Node : select(css: str): Node
+Node : get_depth(): int
+Node : generate_selectors(): gen[str]
+Node : generate_path_selectors(): gen[str]
+Node : ? find_all(item): Match
 
 class Page
+Page : {static} from_html(html: str)
 
 Node <|-- Page
 @enduml

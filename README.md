@@ -18,3 +18,8 @@ This class diagram shows the basic relationships.
 * Match: One possible occurrence of a sample, i.e. nodes in which the sample occurs
 * Extractor: get the value out of a DOM node
 * Selector: an algorithm to select nodes
+
+## Does mlscraper support?
+- scraping arbitary items? yes
+- scraping dicts with missing values? yes
+- detecting specific pages that have no results? no
