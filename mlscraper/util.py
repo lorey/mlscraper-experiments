@@ -120,6 +120,9 @@ class Node:
     def select(self, css_selector):
         return [get_node_for_soup(n) for n in self.soup.select(css_selector)]
 
+    def __repr__(self):
+        return f"<{self.__class__.__name__} {self.soup}>"
+
 
 class Page(Node):
     """
@@ -148,6 +151,9 @@ class TextValueExtractor(Extractor):
 
     def extract(self, node: Node):
         return node.soup.text
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__}>"
 
 
 class AttributeValueExtractor(Extractor):

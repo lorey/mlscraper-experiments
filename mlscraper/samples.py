@@ -1,14 +1,77 @@
+import typing
+from itertools import product
+
+from mlscraper.util import Page
+
+
 class ItemStructureException(Exception):
     pass
 
 
+class Match:
+    """
+    Occurrence of a specific sample on a page
+    """
+
+
+class DictMatch(Match):
+    match_by_key = None
+
+    def __init__(self, match_by_key):
+        self.match_by_key = match_by_key
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} {self.match_by_key=}>"
+
+
+class ListMatch(Match):
+    matches = None
+
+    def __init__(self, matches):
+        self.matches = matches
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} {self.matches=}>"
+
+
+class ValueMatch(Match):
+    node = None
+    extractor = None
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} {self.node=}, {self.extractor=}>"
+
+
 class Sample:
-    def __init__(self, page, value):
+    def __init__(self, page: Page, value: typing.Union[str, list, dict]):
         self.page = page
         self.value = value
 
     def __repr__(self):
         return f"<{self.__class__.__name__} {self.page=}, {self.value=}>"
+
+    def get_matches(self):
+        # todo: fix creating new sample objects, maybe by using Item class?
+
+        if isinstance(self.value, str):
+            return self.page.find_all(self.value)
+
+        if isinstance(self.value, list):
+            matches_by_value = {
+                v: Sample(self.page, v).get_matches() for v in self.value
+            }
+            return ListMatch(list(product(*[matches_by_value[v] for v in self.value])))
+
+        if isinstance(self.value, dict):
+            matches_by_key = {
+                k: Sample(self.page, self.value[k]).get_matches() for k in self.value
+            }
+            return [
+                DictMatch(dict(zip(matches_by_key.keys(), mc)))
+                for mc in product(*matches_by_key.values())
+            ]
+
+        raise RuntimeError(f"unsupported value: {self.value}")
 
 
 class TrainingSet:
@@ -101,23 +164,6 @@ class ValueItem(Item):
         if not isinstance(sample.value, str):
             raise ItemStructureException(f"str expected, {sample.value} given")
         super().add_sample(sample)
-
-
-class Match:
-    pass
-
-
-class DictMatch(Match):
-    match_by_key = None
-
-
-class ListMatch(Match):
-    matches = None
-
-
-class ValueMatch(Match):
-    node = None
-    extractor = None
 
 
 def make_training_set(pages, items):

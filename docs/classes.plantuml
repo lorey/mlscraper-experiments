@@ -30,11 +30,11 @@ package Samples {
 
     class Item
     Item : samples
-    Item : get_matches()
 
     class Sample
     Sample : page
     Sample : value
+    Sample : get_matches()
 
     class DictItem
     DictItem : item_by_key: Dict[str, Sample]
