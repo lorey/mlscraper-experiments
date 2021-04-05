@@ -1,0 +1,103 @@
+@startuml
+class Selector
+Selector : select_one(node: Node)
+Selector : select_all(node: Node)
+
+class CSSRuleSelector
+
+Selector <|-- CSSRuleSelector
+
+package Samples {
+    class Sample
+    Sample : page
+    Sample : item
+    Sample : get_matches()
+    class DictSample
+    class ListSample
+    class ValueSample
+}
+
+Sample <|-- DictSample
+Sample <|-- ListSample
+Sample <|-- ValueSample
+
+Sample --> Page
+
+package Matches{
+    class Match
+    Match : get_span(): int
+    Match : get_root_node(): Node
+
+    class DictMatch
+    DictMatch : match_by_key
+    DictMatch --> Match
+
+    class ListMatch
+    ListMatch : matches
+    ListMatch --> Match
+
+    class ValueMatch
+    ValueMatch : node
+    ValueMatch : extractor
+}
+
+Match ---> Node : root
+
+ValueMatch ---> Node
+
+Match <|-- DictMatch
+Match <|-- ListMatch
+Match <|-- ValueMatch
+
+Sample ---> Match
+
+package Scrapers {
+    class Scraper
+    Scraper : train(matches: Match[], roots: Node[])
+    Scraper : get(node: Node)
+
+    class DictScraper
+    DictScraper : scraper_by_key: Dict[str, Scraper]
+    DictScraper --> Scraper
+
+    class ListScraper
+    ListScraper : selector
+    ListScraper : scraper
+    ListScraper --> Scraper
+
+    class ValueScraper
+    ValueScraper : selector
+    ValueScraper : extractor
+}
+
+ValueScraper --> Selector
+ListScraper --> Selector
+
+class ValueExtractor
+ValueExtractor : get(node: Node)
+
+class AttributeExtractor
+AttributeExtractor : attr
+
+class TextExtractor
+
+Scraper <|-- DictScraper
+Scraper <|-- ListScraper
+Scraper <|-- ValueScraper
+ValueScraper ---> ValueExtractor
+
+ValueExtractor <|--  AttributeExtractor
+ValueExtractor <|--  TextExtractor
+
+ValueMatch --> ValueExtractor
+
+class Node
+Node : parent
+Node : parents
+Node : get_depth()
+Node : generate_selectors()
+
+class Page
+
+Node <|-- Page
+@enduml
