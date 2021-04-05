@@ -3,6 +3,7 @@ import pytest
 from mlscraper.samples import (
     DictMatch,
     ItemStructureException,
+    ListMatch,
     Sample,
     make_training_set,
 )
@@ -23,9 +24,19 @@ class TestTrainingSet:
 
 
 class TestMatch:
-    def test_get_matches_basic(self):
+    def test_get_matches_dict_basic(self):
         page_html = "<html><body><h1>test</h1><p>2010</p><div class='footer'>2010</div></body></html>"
         s = Sample(Page(page_html), {"h": "test", "year": "2010"})
         matches = s.get_matches()
         assert len(matches) == 2
         assert all(isinstance(m, DictMatch) for m in matches)
+
+    def test_get_matches_list_basic(self):
+        item_htmls = map(lambda i: f"<li>{i}</li>", [1, 2, 2, 4])
+        body_html = f"<ul>{''.join(item_htmls)}</ul>"
+        page_html = f"<html><body>{body_html}</body></html>"
+        page = Page(page_html)
+        sample = Sample(page, ["1", "2", "2", "4"])
+        matches = sample.get_matches()
+        assert len(matches) == 2
+        assert all(isinstance(m, ListMatch) for m in matches)

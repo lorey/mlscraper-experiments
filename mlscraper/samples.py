@@ -60,7 +60,16 @@ class Sample:
             matches_by_value = {
                 v: Sample(self.page, v).get_matches() for v in self.value
             }
-            return ListMatch(list(product(*[matches_by_value[v] for v in self.value])))
+
+            # generate list of combinations
+            match_combis = product(*[matches_by_value[v] for v in self.value])
+
+            # filter combinations that use the same matches twice
+            match_combis_unique = filter(
+                lambda mc: len(set(mc)) == len(mc), match_combis
+            )
+
+            return [ListMatch(list(match_combi)) for match_combi in match_combis_unique]
 
         if isinstance(self.value, dict):
             matches_by_key = {
