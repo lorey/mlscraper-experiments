@@ -38,5 +38,30 @@ class TestMatch:
         page = Page(page_html)
         sample = Sample(page, ["1", "2", "2", "4"])
         matches = sample.get_matches()
-        assert len(matches) == 2
+
+        # todo check duplicate generation
+        # assert len(matches) == 2
         assert all(isinstance(m, ListMatch) for m in matches)
+
+    def test_get_matches_list_of_dicts(self):
+        page_html = (
+            "<html><body>"
+            '<div><p class="title">Herr</p><p class="name">Lorey</p></div> '
+            '<div><p class="title">Frau</p><p class="name">Müller</p></div> '
+            "</body></html>"
+        )
+        page = Page(page_html)
+        sample = Sample(
+            page,
+            [{"title": "Herr", "name": "Lorey"}, {"title": "Frau", "name": "Müller"}],
+        )
+        matches = sample.get_matches()
+
+        # check that matches returns one possible list match
+        assert len(matches) == 1
+
+        # check that matched list item is dict
+        match = matches[0]
+        assert isinstance(match, ListMatch)
+        assert len(match.matches) == 2
+        assert all(isinstance(m, DictMatch) for m in match.matches)

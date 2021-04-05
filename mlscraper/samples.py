@@ -17,7 +17,7 @@ class Match:
 class DictMatch(Match):
     match_by_key = None
 
-    def __init__(self, match_by_key):
+    def __init__(self, match_by_key: dict):
         self.match_by_key = match_by_key
 
     def __repr__(self):
@@ -27,7 +27,7 @@ class DictMatch(Match):
 class ListMatch(Match):
     matches = None
 
-    def __init__(self, matches):
+    def __init__(self, matches: tuple):
         self.matches = matches
 
     def __repr__(self):
@@ -57,24 +57,19 @@ class Sample:
             return self.page.find_all(self.value)
 
         if isinstance(self.value, list):
-            matches_by_value = {
-                v: Sample(self.page, v).get_matches() for v in self.value
-            }
+            matches_by_value = [Sample(self.page, v).get_matches() for v in self.value]
 
             # generate list of combinations
-            match_combis = product(*[matches_by_value[v] for v in self.value])
+            # todo filter combinations that use the same matches twice
+            match_combis = product(*matches_by_value)
 
-            # filter combinations that use the same matches twice
-            match_combis_unique = filter(
-                lambda mc: len(set(mc)) == len(mc), match_combis
-            )
-
-            return [ListMatch(list(match_combi)) for match_combi in match_combis_unique]
+            return [ListMatch(tuple(match_combi)) for match_combi in match_combis]
 
         if isinstance(self.value, dict):
             matches_by_key = {
                 k: Sample(self.page, self.value[k]).get_matches() for k in self.value
             }
+
             return [
                 DictMatch(dict(zip(matches_by_key.keys(), mc)))
                 for mc in product(*matches_by_key.values())
