@@ -1,6 +1,12 @@
 from bs4 import BeautifulSoup
 
-from mlscraper.util import AttributeValueExtractor, Node, Page, get_attribute_extractor
+from mlscraper.util import (
+    AttributeValueExtractor,
+    Node,
+    Page,
+    _get_root_of_nodes,
+    get_attribute_extractor,
+)
 
 
 class TestPage:
@@ -36,3 +42,14 @@ def test_extractor_factory():
     assert (
         e1 is e2
     ), "extractor factory return different instances for the same extractor"
+
+
+def test_get_root_of_nodes():
+    soup = BeautifulSoup(
+        '<html><body><div><p id="one"></p><p><span id="two"></span></p></div></body></html>',
+        "lxml",
+    )
+    node_1 = soup.select_one("#one")
+    node_2 = soup.select_one("#two")
+    root = _get_root_of_nodes([node_1, node_2])
+    assert root == soup.select_one("div")

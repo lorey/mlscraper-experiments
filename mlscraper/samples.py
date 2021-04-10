@@ -1,45 +1,11 @@
 import typing
 from itertools import product
 
-from mlscraper.util import Page
+from mlscraper.util import DictMatch, ListMatch, Page
 
 
 class ItemStructureException(Exception):
     pass
-
-
-class Match:
-    """
-    Occurrence of a specific sample on a page
-    """
-
-
-class DictMatch(Match):
-    match_by_key = None
-
-    def __init__(self, match_by_key: dict):
-        self.match_by_key = match_by_key
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__} {self.match_by_key=}>"
-
-
-class ListMatch(Match):
-    matches = None
-
-    def __init__(self, matches: tuple):
-        self.matches = matches
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__} {self.matches=}>"
-
-
-class ValueMatch(Match):
-    node = None
-    extractor = None
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__} {self.node=}, {self.extractor=}>"
 
 
 class Sample:
@@ -124,11 +90,11 @@ class Item:
 
 
 class DictItem(Item):
-    items_per_key = None
+    item_per_key = None
 
     def __init__(self):
         super().__init__()
-        self.items_per_key = {}
+        self.item_per_key = {}
 
     def add_sample(self, sample: Sample):
         if not isinstance(sample.value, dict):
@@ -136,11 +102,12 @@ class DictItem(Item):
 
         super().add_sample(sample)
 
-        for key in sample.value.keys():
-            if key not in self.items_per_key:
-                self.items_per_key[key] = Item.create_from(sample.value[key])
+        for key, value in sample.value.items():
+            if key not in self.item_per_key:
+                self.item_per_key[key] = Item.create_from(value)
 
-            self.items_per_key[key].add_sample(Sample(sample.page, sample.value[key]))
+            value_sample = Sample(sample.page, value)
+            self.item_per_key[key].add_sample(value_sample)
 
 
 class ListItem(Item):
@@ -160,7 +127,7 @@ class ListItem(Item):
             self.item = Item.create_from(sample.value[0])
 
         for v in sample.value:
-            self.item.add_sample(v)
+            self.item.add_sample(Sample(sample.page, v))
 
 
 class ValueItem(Item):

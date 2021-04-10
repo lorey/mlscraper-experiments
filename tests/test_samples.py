@@ -1,13 +1,7 @@
 import pytest
 
-from mlscraper.samples import (
-    DictMatch,
-    ItemStructureException,
-    ListMatch,
-    Sample,
-    make_training_set,
-)
-from mlscraper.util import Page
+from mlscraper.samples import ItemStructureException, Sample, make_training_set
+from mlscraper.util import DictMatch, ListMatch, Page
 
 
 class TestTrainingSet:
@@ -65,3 +59,5 @@ class TestMatch:
         assert isinstance(match, ListMatch)
         assert len(match.matches) == 2
         assert all(isinstance(m, DictMatch) for m in match.matches)
+        print(match.get_root())
+        print(match.get_span())

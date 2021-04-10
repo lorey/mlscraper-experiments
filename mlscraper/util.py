@@ -2,7 +2,6 @@ import logging
 import typing
 from itertools import combinations, product
 
-import requests
 from bs4 import BeautifulSoup, Tag
 from more_itertools import powerset
 
@@ -28,9 +27,12 @@ def get_attribute_extractor(attr):
 
 
 def get_node_for_soup(soup):
-    if soup not in node_instance_map:
-        node_instance_map[soup] = Node(soup)
-    return node_instance_map[soup]
+    # use id to avoid __hash__
+    soup_key = id(soup)
+
+    if soup_key not in node_instance_map:
+        node_instance_map[soup_key] = Node(soup)
+    return node_instance_map[soup_key]
 
 
 class Node:
@@ -38,6 +40,10 @@ class Node:
 
     def __init__(self, soup):
         self.soup = soup
+
+    def get_root(self):
+        root_soup = list(self.soup.parents)[-1]
+        return get_node_for_soup(root_soup)
 
     def get_text(self):
         return self.soup.text
@@ -48,17 +54,19 @@ class Node:
         return list(self._generate_find_all(item))
 
     def _generate_find_all(self, item):
+        assert isinstance(item, str)
+
         # text
         for soup_node in self.soup.find_all(text=item):
             node = get_node_for_soup(soup_node.parent)
-            yield Match(node, get_text_extractor())
+            yield ValueMatch(node, get_text_extractor())
 
         # attributes
         for soup_node in self.soup.find_all():
             for attr in soup_node.attrs:
                 if soup_node[attr] == item:
                     node = get_node_for_soup(soup_node)
-                    yield Match(node, get_attribute_extractor(attr))
+                    yield ValueMatch(node, get_attribute_extractor(attr))
 
         # todo implement other find methods
 
@@ -121,7 +129,80 @@ class Node:
         return [get_node_for_soup(n) for n in self.soup.select(css_selector)]
 
     def __repr__(self):
-        return f"<{self.__class__.__name__} {self.soup}>"
+        return f"<{self.__class__.__name__}>"
+
+
+class Match:
+    """
+    Occurrence of a specific sample on a page
+    """
+
+    def get_span(self) -> int:
+        raise NotImplementedError()
+
+    def get_root(self) -> Node:
+        raise NotImplementedError()
+
+
+class DictMatch(Match):
+    match_by_key = None
+
+    def __init__(self, match_by_key: dict):
+        self.match_by_key = match_by_key
+
+        soup_nodes = [m.get_root().soup for m in self.match_by_key.values()]
+        self.root = get_node_for_soup(_get_root_of_nodes(soup_nodes))
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} {self.match_by_key=}>"
+
+    def get_root(self) -> Node:
+        return self.root
+
+    def get_span(self) -> int:
+        root = self.get_root()
+        return sum(
+            [get_relative_depth(m.get_root(), root) for m in self.match_by_key.values()]
+        )
+
+
+class ListMatch(Match):
+    matches = None
+
+    def __init__(self, matches: tuple):
+        self.matches = matches
+        self.root = get_node_for_soup(
+            _get_root_of_nodes([m.get_root().soup for m in self.matches])
+        )
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} {self.matches=}>"
+
+    def get_root(self) -> Node:
+        return self.root
+
+    def get_span(self) -> int:
+        return sum(
+            [get_relative_depth(m.get_root(), self.get_root()) for m in self.matches]
+        )
+
+
+class ValueMatch(Match):
+    node = None
+    extractor = None
+
+    def __init__(self, node, extractor):
+        self.node = node
+        self.extractor = extractor
+
+    def __repr__(self):
+        return f"<{self.__class__.__name__} {self.node=}, {self.extractor=}>"
+
+    def get_root(self) -> Node:
+        return self.node
+
+    def get_span(self) -> int:
+        return 0
 
 
 class Page(Node):
@@ -170,25 +251,6 @@ class AttributeValueExtractor(Extractor):
         return f"<{self.__class__.__name__} {self.attr=}>"
 
 
-class Match:
-    """
-    An item found on a page.
-    """
-
-    extractor = None
-    node = None
-
-    def __init__(self, node: Node, extractor: Extractor):
-        self.node = node
-        self.extractor = extractor
-
-    def get_value(self):
-        return self.extractor.extract(self.node)
-
-    def __repr__(self):
-        return f"<{self.__class__.__name__} {self.extractor=} {self.node=}>"
-
-
 class Selector:
     """
     Class to select nodes from another node.
@@ -235,58 +297,6 @@ class DictExtractor(Extractor):
         }
 
 
-class Sample:
-    """
-    A sample of data found on a page.
-    """
-
-    page = None
-    item = None
-
-    def __init__(self, page: Page, item):
-        self.page = page
-        self.item = item
-
-    def __repr__(self):
-        return f"<Sample {self.page=}, {self.item=}>"
-
-    def get_matches(self) -> typing.List[Match]:
-        if isinstance(self.item, str):
-            return self.page.find_all(self.item)
-
-        if isinstance(self.item, dict):
-            keys = self.item.keys()
-            matches_by_key = {
-                k: Sample(self.page, self.item[k]).get_matches() for k in keys
-            }
-            for key, matches in matches_by_key.items():
-                assert len(matches) > 0, f"no match found for {key}"
-
-            # get all possible combinations of matches
-            lod = []
-            for matches in product(*matches_by_key.values()):
-                lod.append(dict(zip(keys, matches)))
-            return lod
-
-        raise NotImplementedError(
-            f"finding matches only works for trivial samples, not {type(self.item)}: {self.item}"
-        )
-
-
-def samples_from_url_dict(url_to_item):
-    """
-    Create samples from dict mapping url->item.
-    :param url_to_item:
-    :return:
-    """
-    samples = []
-    for url, item in url_to_item.items():
-        page_html = requests.get(url).content
-        page = Page(page_html)
-        samples.append(Sample(page, item))
-    return samples
-
-
 def generate_node_selector(node):
     """
     Generate a selector for the given node.
@@ -325,36 +335,41 @@ def powerset_max_length(candidates, length):
     return filter(lambda s: len(s) <= length, powerset(candidates))
 
 
-def get_common_ancestor_for_nodes(nodes):
-    # todo might require adding node here!
-    paths_of_nodes = [list(reversed(list(node.parents))) for node in nodes]
-    ancestor = _get_common_ancestor_for_paths(paths_of_nodes)
+def _get_root_of_nodes(nodes):
+    # root can be node itself, so it has to be added
+    parent_paths_of_nodes = [[node] + list(node.parents) for node in nodes]
+
+    # paths are needed from top to bottom
+    parent_paths_rev = [list(reversed(pp)) for pp in parent_paths_of_nodes]
+    try:
+        ancestor = _get_root_of_paths(parent_paths_rev)
+    except RuntimeError:
+        raise RuntimeError(f"No common ancestor: {nodes}")
     return ancestor
 
 
-def _get_common_ancestor_for_paths(paths):
+def _get_root_of_paths(paths):
     """
     Computes the first common ancestor for list of paths.
     :param paths: list of list of nodes from top to bottom
     :return: first common index or RuntimeError
     """
-    # go through path one by one
-    # while len(set([paths[n][i] for n in range(len(paths))])) == 1:
-    ind = None
-    for i, nodes in enumerate(zip(*paths)):
-        # as long as all nodes are the same
-        # -> go deeper
-        # else break
-        if len(set(nodes)) != 1:
-            # return parent of mismatch
-            break
+    # go through paths one by one, starting from bottom
+    for nodes in reversed(list(zip(*paths))):
+        node = nodes[0]
+        if all(n is node for n in nodes):
+            return nodes[0]
 
-        # set after as this remembers the last common index
-        ind = i
+    raise RuntimeError("No common ancestor")
 
-    # if index is unset, even the first nodes didn't match
-    if ind is None:
-        raise RuntimeError("No common ancestor")
 
-    # as all nodes are the same, we can just use the first path
-    return paths[0][ind]
+def get_relative_depth(node: Node, root: Node):
+    node_parents = list(node.soup.parents)
+
+    # depth of root
+    i = node_parents.index(root.soup)
+
+    # depth of element
+    j = len(node_parents)
+
+    return j - i

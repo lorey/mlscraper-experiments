@@ -1,8 +1,9 @@
 import pytest
 
+from mlscraper.samples import Sample
 from mlscraper.scrapers import DictScraper, ListScraper, ValueScraper
 from mlscraper.selectors import CssRuleSelector
-from mlscraper.util import AttributeValueExtractor, Page, Sample, TextValueExtractor
+from mlscraper.util import AttributeValueExtractor, Page, TextValueExtractor
 
 
 @pytest.fixture
@@ -53,7 +54,7 @@ class TestListOfDictScraper:
         ls = ListScraper(selector, scraper)
         sample = stackoverflow_samples[0]
         results = ls.get(sample.page)
-        assert sample.item == results
+        assert sample.value == results
 
 
 class TestDictScraper:
